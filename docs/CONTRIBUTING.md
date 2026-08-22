@@ -1,54 +1,60 @@
-# Contributing & Release Process
+# Contributing
 
 ## Branch model
 
 ```
-main      ← nur PRs aus staging (geschützt, kein Direktpush)
+main          stable; receives changes only through pull requests from staging
   │
-staging   ← Feature-Branches münden hier; baut automatisch "Latest"-Release
+staging       integration branch; every push produces a rolling "latest" pre-release
   │
-wip/<thema>
-          ← Arbeitsbranches für ein Thema (z.B. wip/invsee-cache)
+wip/<topic>   short-lived feature branches (e.g. wip/invsee-cache, wip/ec-gui)
 ```
 
-* `main` ist **immer stabil** und wird ausschließlich per Pull Request aus `staging` aktualisiert.
-* `staging` erhält die laufenden Merge-Produkte; jeder Push erzeugt automatisch einen **„Latest"** Pre-Release mit JAR.
-* Arbeit passiert auf `wip/<thema>`-Branches (`wip/ec-gui`, `wip/webhook-retry`, …).
+- `main` is protected: direct pushes are rejected. Changes arrive exclusively via merged pull requests from `staging`.
+- `staging` is also history-protected but accepts direct pushes from collaborators during integration.
+- Work happens on `wip/<topic>` branches cut from `staging`.
 
-## Versionierung (SemVer)
+## Versioning
 
-`MAJOR.MINOR.PATCH` – Tags als `v1.2.3`.
+Semantic versioning with `vMAJOR.MINOR.PATCH` tags.
 
-| Änderung | Bump | Beispiel |
+| Change | Bump | Example |
 |---|---|---|
-| Breaking: Snapshot-Format, API-Entfernung, Config-Renaming ohne Fallback | MAJOR | `v1.0.0 → v2.0.0` |
-| Neues Feature (z.B. neuer Sync-Bereich, neue API-Methode) | MINOR | `v1.0.0 → v1.1.0` |
-| Bugfix, Performance, Docs | PATCH | `v1.1.0 → v1.1.1` |
+| Breaking change: snapshot format, removed API, config key without fallback | MAJOR | `v1.0.0 → v2.0.0` |
+| New feature or new API method | MINOR | `v1.0.0 → v1.1.0` |
+| Bug fix, performance improvement, documentation | PATCH | `v1.1.0 → v1.1.1` |
 
-Vor jedem Release: Version in `pom.xml` setzen, Eintrag in `CHANGELOG.md` ergänzen.
+Before releasing: set the version in `pom.xml` and add a `CHANGELOG.md` entry.
 
-## Release-Ablauf
+## Release flow
 
 ```bash
-# 1) Feature fertigstellen
-git checkout -b wip/mein-thema staging
+# 1) Finish the feature
+git checkout -b wip/my-topic staging
 git commit -m "feat: ..."
-gh pr create --base staging --head wip/mein-thema
+gh pr create --base staging --head wip/my-topic
 
-# 2) Nach Merge in staging → "latest" Release entsteht automatisch
+# 2) After merging into staging, the "latest" pre-release updates automatically
 
-# 3) Release freigeben
-git checkout main
+# 3) Promote to a release
+git checkout main && git pull
 gh pr create --base main --head staging --title "Release v1.1.0"
 git tag -a v1.1.0 -m "v1.1.0" && git push origin v1.1.0
 ```
 
-Der Push des Tags `v*` baut das JAR und erstellt automatisch einen GitHub **Release** mit dem Asset `AstralisSync-v1.1.0.jar` und generierten Release Notes.
+Pushing a `v*` tag builds the jar and publishes a GitHub release containing `AstralisSync-<tag>.jar` with generated release notes.
 
-## Workflows
+## CI workflows
 
-| Workflow | Trigger | Ergebnis |
+| Workflow | Trigger | Result |
 |---|---|---|
-| `build.yml` | jeder Push / PR | Kompiliert, lädt JAR als Artifact hoch |
-| `latest.yml` | Push auf `staging` | Aktualisiert den `latest` Pre-Release |
-| `release.yml` | Tag `v*` | Erstellt echten Release mit versioniertem JAR |
+| Build | any push or pull request | Compile check; jar uploaded as artifact |
+| Latest Build | push to `staging` | Updates the rolling `latest` pre-release |
+| Release | push of a `v*` tag | Publishes a versioned GitHub release |
+
+## Code guidelines
+
+- Keep `mvn clean package` green.
+- All database and network I/O stays off the server thread.
+- Do not modify the shade relocation rules in `pom.xml`.
+- New configuration keys belong in `config.yml`, documented in `docs/CONFIGURATION.md`.

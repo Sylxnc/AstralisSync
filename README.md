@@ -1,118 +1,92 @@
-<div align="center">
-
 # AstralisSync
 
-**Cross-server player data sync for Paper networks — MySQL + Redis**
+Cross-server player data synchronization for Paper networks, backed by MySQL and Redis.
 
-Inventories · Ender Chests · XP · Snapshots · InvSee · Vouchers · Shop
+Astralissync keeps one authoritative snapshot per player and replicates it across every backend server in a network. It covers the full player state — inventory, ender chest, experience, attributes, status effects and position — and adds operational tooling on top: snapshot history with a restore GUI, live cross-server inventory inspection, purchasable ender chest rows, redeemable vouchers, integrity checks and Discord notifications.
 
-[![Build](https://github.com/Sylxnc/AstralisSync/actions/workflows/build.yml/badge.svg)](../../actions)
-[![Minecraft](https://img.shields.io/badge/Minecraft-1.21.x-8A2BE2)](https://papermc.io)
-[![Java](https://img.shields.io/badge/Java-25+-orange)](https://openjdk.org)
+## Features
 
-</div>
+**Synchronization**
 
----
+- Inventory including armor, off-hand and held slot
+- Ender chest (including purchased extra rows)
+- Experience, health and max-health modifiers, hunger and saturation
+- Active potion effects
+- Game mode, flight and gliding state
+- Last known location
+- Advancements (awarded criteria) and untyped statistics
 
-## ✨ Features
+**Infrastructure**
 
-| Feature | Description |
+- MySQL persistence via HikariCP; Redis cache and pub/sub messaging
+- Distributed login locks that prevent two servers from loading the same player simultaneously
+- Automatic lock renewal while a player is online
+
+**Tooling**
+
+- Snapshot history: captured before fatal damage, on quit and manually; browsable and restorable through an in-game GUI with a configurable rolling limit
+- Cross-server `/invsee`: editable live view for local players, read-only view of remote players
+- Ender chest row upgrades (1–6 rows) driven by config or vouchers
+- Vouchers: persistent clickable items redeemable with left or right click
+- In-game voucher shop accepting items or XP levels
+- SHA-256 payload checksums with quarantine of corrupted rows
+- Discord webhook notifications for restores, purges, lock conflicts and detected corruption
+- JSON export/import for moving players between networks
+
+**Extensibility**
+
+- Developer API (`AstralisSyncApi`) with four events
+- PlaceholderAPI expansion (`%astralissync_ecrows%`, `%astralissync_server%`, …)
+
+## Requirements
+
+| Component | Version |
 |---|---|
-| 🔄 **Full data sync** | Inventory (incl. armor, off-hand, held slot), ender chest, XP, health, hunger, potion effects, gamemode & location |
-| 🗄️ **MySQL persistence** | HikariCP connection pool, versioned binary snapshots, upsert-safe |
-| ⚡ **Redis cache + messaging** | 5-min hot cache, pub/sub with auto-reconnect, `REQ_SAVE` remote-save requests |
-| 🔐 **Distributed locks** | `SET NX PX` login locks prevent dual-login data loss; auto-renew every 30 s |
-| 💀 **Snapshot history** | Auto-capture before fatal damage, on quit, manually & pre-restore. Rolling limit via config. Browse + restore via GUI |
-| 👁️ **Cross-server InvSee** | Live-editable mirror for local players, fresh read-only view of remote players |
-| 📦 **Ender chest upgrades** | Row-based EC (1–6 rows) with mirror-back on close |
-| 🎟️ **Vouchers** | PDC-tagged clickable items that survive sync; left *or* right click to redeem |
-| 🛒 **Voucher shop** | Buy vouchers with items or XP levels via GUI |
-| 🏆 **Advancements & stats sync** | Awarded criteria + untyped statistics follow the player |
-| 🛡️ **Checksum integrity** | SHA-256 per payload, quarantine table, `loadAnyValid()` recovery, `verifyAll()` scan |
-| 📣 **Discord webhooks** | Restores, purges, lock conflicts, corruption alerts |
-| 🧩 **Developer API + Events** | `AstralisSyncApi`, `ApiProvider`, 4 cancellable/info events |
-| 📊 **PlaceholderAPI** | `%astralissync_ecrows%`, `%astralissync_server%`, … |
+| Paper | 1.21.x |
+| Java | 25 or newer |
+| MySQL / MariaDB | 8.0+ / 10.6+ |
+| Redis | 6.0+ |
 
-## 🚀 Quick start
+## Installation
 
-1. Drop `Astralissync-<version>.jar` into `plugins/` on **every** backend server.
-2. Start once to generate `config.yml`, then set on each server:
-   ```yaml
-   server-id: "survival-1"   # must be UNIQUE per server!
-   mysql: { host, database, username, password }
-   redis: { host, password }
-   ```
-3. Restart. Tables are created automatically.
+1. Place `AstralisSync.jar` in the `plugins/` directory of **every** backend server.
+2. Start each server once to generate `plugins/AstralisSync/config.yml`.
+3. Configure a unique `server-id` per server plus your MySQL and Redis credentials.
+4. Restart. All database tables are created automatically.
 
-**Requirements:** Paper 1.21.x · Java 25+ · MySQL 8+/MariaDB · Redis 6+
+Full configuration reference: [docs/CONFIGURATION.md](docs/CONFIGURATION.md)
 
-## 📖 Commands
+## Commands
 
 | Command | Permission | Description |
 |---|---|---|
-| `/astralissync status` | `astralissync.admin` | Connection & server status |
+| `/astralissync status` | `astralissync.admin` | Show connection and server status |
 | `/astralissync save [player]` | `astralissync.admin` | Force-save one or all players |
-| `/astralissync purge <player>` | `astralissync.admin` | Delete a player's synced data |
-| `/astralissync voucher <id> [player] [n]` | `astralissync.admin` | Give a voucher |
-| `/astralissync ec upgrade` / `ec set <p> <rows>` | `astralissync.admin` | Manage ender chest rows |
-| `/snapshots [player]` · `save` · `restore <id>` | `astralissync.snapshots` | Snapshot GUI & restore |
+| `/astralissync purge <player>` | `astralissync.admin` | Delete a player's synchronized data |
+| `/astralissync voucher <id> [player] [amount]` | `astralissync.admin` | Give a voucher item |
+| `/astralissync ec upgrade` · `ec set <player> <rows>` | `astralissync.admin` | Manage ender chest rows |
+| `/snapshots [player]`, `/snapshots save`, `/snapshots restore <id>` | `astralissync.snapshots` | Browse, create and restore snapshots |
 | `/invsee <player>` | `astralissync.invsee` | Cross-server inventory view |
-| `/vouchershop` | `astralissync.shop` (default: true) | Buy vouchers |
-| `/syncexport export <player>` / `import <file>` | `astralissync.export` | JSON migration tool |
+| `/vouchershop` | `astralissync.shop` (default: true) | Open the voucher shop |
+| `/syncexport export <player>`, `/syncexport import <file>` | `astralissync.export` | JSON export/import for migrations |
 
-## ⚙️ Configuration
+## Documentation
 
-See [docs/CONFIGURATION.md](docs/CONFIGURATION.md) for every key with examples — feature toggles, ender chest rows, snapshot limits, voucher skins, shop prices, message gradients & sounds, webhooks.
+| Document | Contents |
+|---|---|
+| [Configuration](docs/CONFIGURATION.md) | Every configuration key with defaults and examples |
+| [Developer API](docs/API.md) | API access, methods, events, threading rules |
+| [Architecture](docs/ARCHITECTURE.md) | Data model, snapshot format, lifecycle, locking |
+| [Contributing](docs/CONTRIBUTING.md) | Branch model, versioning, release process |
 
-## 🧩 Developer API
+## Building
 
-```xml
-<repository>
-    <id>github</id>
-    <url>https://maven.pkg.github.com/Sylxnc/AstralisSync</url>
-</repository>
-
-<dependency>
-    <groupId>com.sylxnc.astralis</groupId>
-    <artifactId>sync</artifactId>
-    <version>1.0.0</version>
-    <scope>provided</scope>
-</dependency>
+```bash
+mvn clean package
 ```
 
-```java
-AstralisSyncApi api = ApiProvider.get();
-int rows = api.getEnderChestRows(player.getUniqueId());
-api.captureSnapshot(player, "my-plugin");
+The build produces a self-contained jar at `target/sync-<version>.jar`. Runtime libraries are shaded and relocated; no external dependencies need to be installed on the server.
 
-@EventHandler
-void onRestore(SnapshotRestoreEvent event) {
-    if (event.getPlayer().hasPermission("myplugin.norestore")) {
-        event.setCancelled(true);
-    }
-}
-```
+## License
 
-Full guide: [docs/API.md](docs/API.md)
-
-## 🏗️ Architecture
-
-```
-Player joins
-  │
-  ├─ AsyncPreLogin ──► Redis LOCK (SET NX PX 90s) ──► denied if another server owns it
-  ├─ Join ──────────► load: Redis cache ──► MySQL ──► apply on main thread
-  │                   + advancements/statistics restore
-  ├─ Playing ───────► autosave (5 min) + lock renewal (30 s) + pre-death snapshots
-  └─ Quit ──────────► snapshot ──► save (async) ──► pub/sub broadcast ──► unlock
-```
-
-Details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
-
-## 🤝 Contributing
-
-Branch-Modell (`main` ← `staging` ← `wip/<thema>`), SemVer-Regeln und der Release-Ablauf stehen in [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md). `mvn clean package` muss grün bleiben; die Shade-Relocation-Regeln in `pom.xml` nicht antasten.
-
-## 📄 License
-
-[Attribution License](LICENSE) © Sylxnc — free to use and modify, **credit "Includes AstralisSync by Sylxnc" required** in any distribution, even after modifications.
+This project is licensed under the [Attribution License](LICENSE). Use and modification are permitted provided the credit *"Includes AstralisSync by Sylxnc"* remains visible in any distribution, including modified versions.

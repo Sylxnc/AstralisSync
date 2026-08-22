@@ -1,21 +1,21 @@
 # Changelog
 
-All notable changes to AstralisSync are documented here.
-Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+All notable changes to AstralisSync are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [1.0.0] - 2026-08-23
 
 ### Added
-- Cross-server sync of inventory, ender chest, XP, health, hunger, potion effects, gamemode & location (MySQL + HikariCP, Redis cache/pub-sub)
-- Distributed login locks (`SET NX PX`) with auto-renewal and fail-closed behavior
-- Snapshot history: auto pre-death, quit, manual & pre-restore captures; rolling limit; paginated GUI with restore
-- Live cross-server `/invsee` (editable local mirror, read-only remote via `REQ_SAVE` pub/sub)
-- Ender chest row upgrades (1–6 rows) with custom inventory mirroring
-- Clickable vouchers (PDC-tagged, left/right-click redeem) + GUI shop (item & XP costs)
-- Advancements & untyped statistics sync
-- SHA-256 payload checksums with quarantine table and `loadAnyValid()` / `verifyAll()` recovery
-- Discord webhook notifications (restore, purge, lock conflict, corruption)
-- JSON export/import (`/syncexport`) for network migration
-- Developer API (`AstralisSyncApi`, `ApiProvider`) + events (`EnderChestUpgradeEvent`, `VoucherRedeemEvent`, `SnapshotRestoreEvent`, `SnapshotCapturedEvent`)
-- PlaceholderAPI expansion (`%astralissync_*%`)
+
+- Cross-server synchronization of inventory, ender chest, experience, health, hunger, potion effects, game mode and location, backed by MySQL (HikariCP) with Redis caching, pub/sub messaging and distributed login locks
+- Automatic lock renewal while a player is online; joins are denied when another server holds the data
+- Snapshot history captured before fatal damage, on quit, manually and before restores, with a configurable rolling limit and a paginated restore GUI
+- Live cross-server `/invsee` with an editable mirror for local players and refreshed read-only views for remote players via `REQ_SAVE` messaging
+- Ender chest row upgrades (one to six rows) persisted in `player_meta`
+- Clickable vouchers identified through persistent data containers, redeemable with left or right click, plus an in-game shop accepting items or XP levels
+- Advancement and untyped statistics synchronization stored in dedicated tables
+- SHA-256 payload checksums with quarantine of corrupted rows and recovery helpers (`loadAnyValid`, `verifyAll`)
+- Discord webhook notifications for restores, purges, lock conflicts and corruption
+- JSON export and import commands for migrating players between networks
+- Developer API (`AstralisSyncApi`, `ApiProvider`) with events for ender chest upgrades, voucher redemptions and snapshot lifecycle
+- PlaceholderAPI expansion exposing ender chest rows, maximum rows and server identifiers
 - MiniMessage-based configurable messages with gradients and per-message sounds

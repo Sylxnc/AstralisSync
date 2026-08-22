@@ -1,15 +1,24 @@
 # Developer API
 
-AstralalisSync exposes a small Java API for other plugins on the same server.
+Astralissync exposes a small Java API for plugins running on the same server.
 
 ## Setup
 
-Add the plugin jar as a compile dependency (or publish/consume via the GitHub
-Packages coordinates shown in the README) and depend on it in your
-`plugin.yml`:
+Add the plugin jar as a compile-time dependency and declare the dependency in your `plugin.yml`:
 
 ```yaml
 depend: [ AstralisSync ]
+```
+
+Maven coordinates (publish via GitHub Packages or install the jar locally with `mvn install`):
+
+```xml
+<dependency>
+    <groupId>com.sylxnc.astralis</groupId>
+    <artifactId>sync</artifactId>
+    <version>1.0.0</version>
+    <scope>provided</scope>
+</dependency>
 ```
 
 ## Accessing the API
@@ -20,60 +29,63 @@ import com.sylxnc.astralis.sync.api.ApiProvider;
 
 AstralisSyncApi api = ApiProvider.get();
 if (api == null) {
-    // AstralisSync not installed/enabled - degrade gracefully
+    // AstralisSync is not installed or not enabled; degrade gracefully.
 }
 ```
 
-## API surface
+The instance is registered on enable and cleared on disable of AstralisSync.
+
+## Methods
 
 ### Ender chest
 
 | Method | Description |
 |---|---|
-| `int getEnderChestRows(UUID)` | Current rows of a player (DB-backed cache). |
+| `int getEnderChestRows(UUID playerId)` | Current row count for a player. |
 | `int getMaxEnderChestRows()` | Configured network maximum. |
-| `int upgradeEnderChestRows(UUID)` | Grants +1 row. Returns new count or `-1` at max / cancelled. Fires [`EnderChestUpgradeEvent`](#events). |
+| `int upgradeEnderChestRows(UUID playerId)` | Grants one additional row. Returns the new count, or `-1` when already at maximum or cancelled by an event listener. |
 
 ### Vouchers
 
 | Method | Description |
 |---|---|
-| `void giveVoucher(Player, String id, int amount)` | Gives a configured voucher from `config.yml → vouchers`. |
-| `boolean isVoucher(ItemStack)` | PDC-based voucher check. |
+| `void giveVoucher(Player player, String id, int amount)` | Gives a voucher defined in `config.yml` under `vouchers.<id>`. |
+| `boolean isVoucher(ItemStack item)` | Persistent-data-based voucher check. |
 
 ### Snapshots
 
 | Method | Description |
 |---|---|
-| `void captureSnapshot(Player, String cause)` | Async capture with your custom cause label. |
-| `boolean restoreSnapshot(Player, long id)` | **Main thread only.** Fires cancellable `SnapshotRestoreEvent`, auto-captures `pre-restore`, notifies webhooks and re-saves on success. |
+| `void captureSnapshot(Player player, String cause)` | Captures the current state asynchronously using your custom cause label. |
+| `boolean restoreSnapshot(Player player, long snapshotId)` | Restores the given snapshot. Must run on the main thread. Fires a cancellable event, captures a `pre-restore` safety snapshot, sends a webhook notification and re-saves the player on success. |
 
-### Raw data
+### Raw data access
 
 | Method | Description |
 |---|---|
-| `CompletableFuture<byte[]> getPlayerData(UUID)` | Latest payload (Redis → MySQL). Versioned binary format of `SnapshotCodec` v3 — decode via `SnapshotCodec.decode(byte[])`. |
-| `void savePlayer(Player)` | Persists current state to MySQL + Redis asynchronously. |
+| `CompletableFuture<byte[]> getPlayerData(UUID playerId)` | Latest payload, resolved from Redis first, then MySQL. Use `SnapshotCodec.decode(byte[])` to inspect it. |
+| `void savePlayer(Player player)` | Persists the current state to MySQL and Redis asynchronously. |
 
-### Misc
+### Miscellaneous
 
-* `String getServerId()` – configured backend id.
+- `String getServerId()` returns the configured backend identifier.
 
 ## Events
 
-All events live in `com.sylxnc.astralis.sync.api.event`.
+All events are located in `com.sylxnc.astralis.sync.api.event`.
 
 | Event | Thread | Cancellable | Fired when |
 |---|---|---|---|
-| `EnderChestUpgradeEvent` | main | ✅ | An EC row upgrade is about to be granted (`getOldRows()`/`getNewRows()`). Cancelling blocks it and the voucher is *not* consumed. |
-| `VoucherRedeemEvent` | main | ✅ | A player clicks a voucher. Cancelling prevents redemption. |
-| `SnapshotRestoreEvent` | main | ✅ | Before a snapshot is applied to a player. |
-| `SnapshotCapturedEvent` | async | ❌ | After a snapshot was persisted (`getCause()`: `death`, `quit`, `manual`, `pre-restore`, or your API cause). |
+| `EnderChestUpgradeEvent` | main | yes | An ender chest upgrade is about to be granted. Cancelling blocks it without consuming the voucher. Provides old and new row counts. |
+| `VoucherRedeemEvent` | main | yes | A player clicks a voucher. Cancelling prevents redemption. |
+| `SnapshotRestoreEvent` | main | yes | Before a snapshot is applied to a player. |
+| `SnapshotCapturedEvent` | async | no | After a snapshot was persisted. Cause is one of `death`, `quit`, `manual`, `pre-restore` or your custom API cause. |
 
-Example listener:
+Example:
 
 ```java
-public final class NoRestoreListener implements Listener {
+public final class ArenaRules implements Listener {
+
     @EventHandler(ignoreCancelled = true)
     public void onRestore(SnapshotRestoreEvent event) {
         if (event.getPlayer().getWorld().getName().equals("arena")) {
@@ -85,5 +97,5 @@ public final class NoRestoreListener implements Listener {
 
 ## Threading rules
 
-* Everything may be called off-thread **except** `restoreSnapshot` (main thread enforced).
-* Events marked "main" must be listened to normally (Bukkit delivers them on main); `SnapshotCapturedEvent` arrives async — do not touch Bukkit state inside.
+- All methods may be called from any thread except `restoreSnapshot`, which enforces the main thread.
+- Main-thread events must be consumed through normal Bukkit listeners; do not touch Bukkit state inside the asynchronous `SnapshotCapturedEvent`.
