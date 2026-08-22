@@ -1,0 +1,29 @@
+name: Build
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+
+      - name: Build
+        run: mvn -B clean package
+
+      - name: Upload plugin jar
+        uses: actions/upload-artifact@v4
+        with:
+          name: AstralisSync-${{ github.sha }}
+          path: target/sync-1.0-SNAPSHOT.jar
+          if-no-files-found: error

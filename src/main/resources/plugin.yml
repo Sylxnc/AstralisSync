@@ -1,0 +1,44 @@
+name: AstralisSync
+version: '${project.version}'
+
+main: com.sylxnc.astralis.sync.Main
+api-version: '1.21'
+load: STARTUP
+
+authors: [ Sylxnc ]
+website: sylxnc.com
+description: Cross-server player data sync via MySQL + Redis, with snapshots, invsee, enderchest upgrades and vouchers.
+
+commands:
+  astralissync:
+    description: AstralisSync admin command
+    permission: astralissync.admin
+  snapshots:
+    description: Open the snapshot history GUI / restore snapshots
+    permission: astralissync.snapshots
+  invsee:
+    description: View a player's inventory across servers (live if online here)
+    permission: astralissync.invsee
+  vouchershop:
+    description: Open the voucher shop GUI
+    permission: astralissync.shop
+  syncexport:
+    description: Export/import player data as JSON (admin migration tool)
+    permission: astralissync.export
+
+permissions:
+  astralissync.admin:
+    description: Full AstralisSync access (includes all sub permissions)
+    default: op
+  astralissync.snapshots:
+    description: Access to own snapshot history and restore
+    default: op
+  astralissync.invsee:
+    description: View other players' inventories across servers
+    default: op
+  astralissync.shop:
+    description: Open the voucher shop
+    default: true
+  astralissync.export:
+    description: Export/import player data files
+    default: op

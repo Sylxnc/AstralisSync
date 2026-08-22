@@ -1,0 +1,30 @@
+# Build artifacts
+target/
+out/
+*.class
+*.jar
+!/.github/**
+
+# IDEs
+.idea/
+*.iml
+.vscode/
+.classpath
+.project
+.settings/
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Local runtime data (never commit)
+plugins/
+exports/
+*.log
+
+# AI assistants (keep .junie if you want it versioned; delete the line below otherwise)
+.junie/
+
+# Build leftovers
+dependency-reduced-pom.xml
+scratch/

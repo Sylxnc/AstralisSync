@@ -1,0 +1,132 @@
+# ============================================================
+#  AstralisSync - Player data sync across backend servers
+# ============================================================
+
+# Unique id of THIS server inside the network (must differ per server!)
+server-id: "lobby-1"
+
+mysql:
+  host: "127.0.0.1"
+  port: 3306
+  database: "astralissync"
+  username: "root"
+  password: ""
+  use-ssl: false
+  pool-size: 10
+
+redis:
+  host: "127.0.0.1"
+  port: 6379
+  password: ""
+  ssl: false
+  # How long cached snapshots stay in Redis (ms). Cache is only a hot path,
+  # MySQL is the source of truth.
+  cache-ttl-millis: 300000
+
+# How often every online player is persisted to MySQL, in ticks (20 ticks = 1s).
+# 6000 = every 5 minutes.
+autosave-interval-ticks: 6000
+
+# Feature toggles for what gets synced.
+features:
+  inventory: true      # main inventory + armor + off hand + held slot
+  enderchest: true     # ender chest incl. purchased rows
+  experience: true     # XP level, progress and total points
+  health: true         # max health modifiers + current health
+  hunger: true         # food level and saturation
+  potion-effects: true # active potion effects
+  location: true       # teleport to last position on join
+  gamemode: true       # gamemode, flying, gliding state
+
+# ------------------------------------------------------------
+# Enderchest upgrades
+# ------------------------------------------------------------
+enderchest:
+  default-rows: 3      # rows a player starts with (1-3)
+  max-rows: 6          # purchasable maximum (3-6)
+
+# ------------------------------------------------------------
+# Snapshot history
+# ------------------------------------------------------------
+snapshots:
+  max-per-player: 10   # rolling limit per player (oldest get deleted)
+
+# ------------------------------------------------------------
+# Clickable vouchers - give with /astralissync voucher <id>
+# ------------------------------------------------------------
+vouchers:
+  ec-row:
+    material: ENDER_EYE
+    glow: true
+    name: "<gradient:#B14EFF:#00E0FF>Enderchest Upgrade</gradient>"
+    lore:
+      - "<gray>Rechtsklick zum Einlösen.</gray>"
+      - ""
+      - "<gray>Erweitert deine Enderchest um</gray>"
+      - "<gradient:#FFD700:#FF8C00>+1 Reihe</gradient><gray>!</gray>"
+    type: ENDERCHEST_ROW
+  ec-max:
+    material: NETHER_STAR
+    glow: true
+    name: "<gradient:#FFD700:#FF5E00>Ultimative Enderchest</gradient>"
+    lore:
+      - "<gray>Rechtsklick zum Einlösen.</gray>"
+      - ""
+      - "<gray>Maximiert deine Enderchest sofort!</gray>"
+    type: ENDERCHEST_MAX
+
+# ------------------------------------------------------------
+# Voucher shop - buy vouchers with items or XP levels (/vouchershop)
+# Each entry id must match a voucher id under "vouchers:" above.
+#   cost-type:   ITEM or XP (XP uses levels)
+#   cost-item:   Material for cost-type ITEM
+#   cost-amount: item count, or XP levels when cost-type is XP
+#   slot:        optional slot (0-26) in the 27-slot shop GUI
+# ------------------------------------------------------------
+shop:
+  ec-row:
+    cost-type: ITEM
+    cost-item: DIAMOND
+    cost-amount: 16
+    slot: 11
+  ec-max:
+    cost-type: XP
+    cost-amount: 30
+    slot: 15
+
+# ------------------------------------------------------------
+# Discord webhook notifications (optional)
+# ------------------------------------------------------------
+discord-webhook:
+  url: ""   # empty = disabled
+
+# ------------------------------------------------------------
+# Advancements sync
+# ------------------------------------------------------------
+advancements:
+  enabled: true
+
+# ------------------------------------------------------------
+# Statistics sync
+# ------------------------------------------------------------
+statistics:
+  enabled: true
+
+# ------------------------------------------------------------
+# Snapshot integrity checks
+# ------------------------------------------------------------
+integrity:
+  checksums: true
+
+# ------------------------------------------------------------
+# Message design (MiniMessage) - gradients, hex colors, sounds
+# Sound format per message: messages.<key>.sound = "SOUND:volume:pitch"
+# ------------------------------------------------------------
+messages:
+  prefix: "<gradient:#B14EFF:#00E0FF>Astral</gradient> <dark_gray>» </dark_gray>"
+sounds:
+  default: "ENTITY_EXPERIENCE_ORB_PICKUP:0.6:1.4"
+
+# Per-message sound overrides (optional):
+#   snapshot-restored:
+#     sound: "UI_TOAST_CHALLENGE_COMPLETE:1:1.2"
