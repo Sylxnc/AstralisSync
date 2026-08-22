@@ -111,7 +111,7 @@ Details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 
 ## 🤝 Contributing
 
-PRs welcome! `mvn clean package` must stay green; keep the shaded-relocation rules in `pom.xml` intact.
+Branch-Modell (`main` ← `staging` ← `wip/<thema>`), SemVer-Regeln und der Release-Ablauf stehen in [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md). `mvn clean package` muss grün bleiben; die Shade-Relocation-Regeln in `pom.xml` nicht antasten.
 
 ## 📄 License
 
